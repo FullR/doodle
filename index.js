@@ -10,15 +10,12 @@ const port = 8081;
 const strokes = [];
 app.use(express.static("public"));
 
-function fileStreamer(path) {
-  return (req, res) => createReadStream(path).pipe(res);
-}
-
 io.on("connection", (socket) => {
   socket.on("stroke", (stroke) => {
     strokes.push(stroke);
     socket.broadcast.emit("stroke", stroke);
   });
+
   socket.emit("strokes", strokes);
 });
 

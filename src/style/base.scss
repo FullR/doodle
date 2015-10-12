@@ -6,9 +6,9 @@ html, body {
 body {
   height: 100%;
   text-align: center;
+  overflow: hidden;
 }
 
 canvas {
   display: inline-block;
-  border: 3px solid #444;
 }

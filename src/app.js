@@ -2,31 +2,34 @@ import socket from "socket";
 import Stroke from "stroke";
 import {Observable} from "rx";
 import {invoke} from "lodash";
+import {getMousePos, prop, fromEvent, getWindowSize} from "util";
+
+const logger = (m) => () => console.log(m);
 const canvas = document.getElementById("draw-canvas");
 const context = canvas.getContext("2d");
+const getCanvasMousePos = (event) => getMousePos(canvas, event);
+const win = getWindowSize();
+canvas.width = win.width;
+canvas.height = win.height;
+
 
 let currentStroke = null
 const strokes = [];
 
-function getMousePos(evt) {
-  var rect = canvas.getBoundingClientRect();
-  return {
-    x: evt.clientX - rect.left,
-    y: evt.clientY - rect.top
-  };
-}
+const brushDown = fromEvent(canvas, "mousedown").map(getCanvasMousePos);
+const brushUp = fromEvent(canvas, "mouseup").map(getCanvasMousePos);
+const brushMove = fromEvent(canvas, "mousemove").map(getCanvasMousePos);
 
-const logger = (m) => () => console.log(m);
-const brushDown = Observable.fromEvent(canvas, "mousedown").map(getMousePos);
-const brushUp = Observable.fromEvent(canvas, "mouseup").map(getMousePos);
-const brushMove = Observable.fromEvent(canvas, "mousemove").map(getMousePos);
+const isDown = Observable.merge(
+  brushDown.map(() => true), 
+  brushUp.map(() => false)
+);
 
-const isDown = Observable.merge(brushDown.map(() => true), brushUp.map(() => false));
 const brushDrag = Observable.combineLatest(isDown, brushMove, (isDown, position) => {
   return {isDown, position};
 })
-  .filter(({isDown}) => isDown)
-  .map(({position}) => position);
+.filter(prop("isDown"))
+.map(prop("position"));
 
 brushDown.subscribe((p) => {
   currentStroke = new Stroke();
@@ -45,6 +48,7 @@ brushUp.subscribe((p) => {
 });
 
 socket.on("stroke", (stroke) => strokes.push(new Stroke(stroke)));
+
 socket.on("strokes", (newStrokes) => {
   newStrokes = newStrokes.map((stroke) => new Stroke(stroke));
   strokes.push(...newStrokes);
